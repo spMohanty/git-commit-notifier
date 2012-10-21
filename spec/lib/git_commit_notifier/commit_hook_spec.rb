@@ -74,12 +74,13 @@ describe GitCommitNotifier::CommitHook do
   def expect_repository_access
     mock(GitCommitNotifier::Git).rev_type(REVISIONS.first) { "commit" }
     mock(GitCommitNotifier::Git).rev_type(REVISIONS.last) { "commit" }
-    mock(GitCommitNotifier::Git).new_commits(anything, anything, anything, anything) { REVISIONS }    
+    mock(GitCommitNotifier::Git).new_commits(anything, anything, anything, anything) { REVISIONS }
     mock(GitCommitNotifier::Git).mailing_list_address { 'recipient@test.com' }
     mock(GitCommitNotifier::Git).repo_name { 'testproject' }
     mock(GitCommitNotifier::Git).changed_files('7e4f6b4', '4f13525') { [] }
     REVISIONS.each do |rev|
       mock(GitCommitNotifier::Git).show(rev, :ignore_whitespaces => true) { IO.read(FIXTURES_PATH + "git_show_#{rev}") }
+      dont_allow(GitCommitNotifier::Git).describe(rev) { IO.read(FIXTURES_PATH + "git_describe_#{rev}") }
     end
   end
 
@@ -133,7 +134,17 @@ describe GitCommitNotifier::CommitHook do
       mock(GitCommitNotifier::CommitHook).config { { 'include_branches' => 'test, me, yourself'  } }
       GitCommitNotifier::CommitHook.include_branches.should == %w(test me yourself)
     end
+  end
 
+  describe :get_subject do
+    it "should run lambda if specified in mapping" do
+      mock(GitCommitNotifier::Git).describe("commit_id") { "yo" }
+      GitCommitNotifier::CommitHook.get_subject(
+        { :commit => "commit_id" },
+        "${description}",
+        { :description => lambda { |commit_info| GitCommitNotifier::Git.describe(commit_info[:commit]) } }
+      ).should == "yo"
+    end
   end
 
 end

@@ -1,13 +1,13 @@
 # Git Commit Notifier
 
-[![Build Status](http://travis-ci.org/bitboxer/git-commit-notifier.png)](http://travis-ci.org/bitboxer/git-commit-notifier)
+[![Build Status](http://travis-ci.org/git-commit-notifier/git-commit-notifier.png)](http://travis-ci.org/git-commit-notifier/git-commit-notifier)
 
 __by Bodo Tasche (bodo 'at' wannawork 'dot' de), Akzhan Abdulin (akzhan 'dot' abdulin 'at' gmail 'dot' com), Csoma Zoltan  (info 'at' railsprogrammer 'dot' net)__
 
-Sends email commit messages splitting commits that were pushed in one step. 
-Email is delivered as text or HTML with changes refined per word. Emails 
-have a scannable subject containing the first sentence of the commit as well 
-as the author, project and branch name. 
+This gem sends email commit messages splitting commits that were pushed in one step.
+The Email is delivered as text or HTML with changes refined per word. Emails
+have a scannable subject containing the first sentence of the commit as well
+as the author, project and branch name.
 
 It's also possible to send a mail to a newsgroup using NNTP.
 
@@ -15,8 +15,8 @@ For example:
 
     [rails][branch] Fix Brasilia timezone. [#1180 state:resolved]
 
-A reply-to header is added containing the author of the commit. This makes 
-follow up really simple. If multiple commits are pushed at once, emails are 
+A reply-to header is added containing the author of the commit. This makes
+follow up really simple. If multiple commits are pushed at once, emails are
 numbered in chronological order:
 
     [rails][branch][0] Added deprecated warning messages to Float#months and Float#years deprications.
@@ -42,7 +42,7 @@ Install the gem:
 gem install git-commit-notifier
 ```
 
-After you installed the gem, you need to configure your git repository. Add a file called 
+After you installed the gem, you need to configure your git repository. Add a file called
 "post-receive" to the "hooks" directory of your git repository with this content:
 
 ```bash
@@ -52,7 +52,7 @@ git-commit-notifier path_to_config.yml
 
 (Don't forget to make that file executable.)
 
-An example for the config file can be found in [config/git-notifier-config.example.yml](http://github.com/bitboxer/git-commit-notifier/blob/master/config/git-notifier-config.example.yml).
+An example for the config file can be found in [config/git-notifier-config.example.yml](http://github.com/git-commit-notifier/git-commit-notifier/blob/master/config/git-notifier-config.example.yml).
 
 If you want to send mails on each commit instead on each push, you should add a file called "post-commit" with this content:
 
@@ -68,6 +68,60 @@ Git-commit-notifier supports easy integration with Redmine, Bugzilla and MediaWi
 * "BUG 123" sentence in commit message will be replaced with link to bug in Bugzilla.
 * "refs #123" and "fixes #123" sentences in commit message will be replaced with link to issue in Redmine.
 * "[[SomePage]]" sentence in commit message will be replaced with link to page in MediaWiki.
+
+## Github-flavored Webhooks
+
+Git-commit-notifier can send a webhook just after sending a mail, This webook will be sent in a POST request to a server specified in the configuration (webhook / url), under JSON format following the same syntax as Github webhooks.
+
+* [Cogbot](https://github.com/mose/cogbot) is the irc bot for which that feature was originaly designed for. Only a subset of the Github json file was required for that one so maybe it won't work on all Github webhook recievers.
+* [Github webhooks](https://help.github.com/articles/post-receive-hooks) describes the json format expected and some hints on how to design a webhook reciever.  Be sure to extract the 'ref' from the json.  An example Sinatra server to use git-commit-notifier might look like:
+
+```ruby
+require 'rubygems'
+require 'json'
+require 'sinatra'
+
+post '/' do
+  if params[:payload]
+    push = JSON.parse(params[:payload])
+
+    repo = push['repository']['name']
+    before_id = push['before']
+    after_id = push['after']
+    ref = push['ref']
+
+    system("/usr/local/bin/change-notify.sh #{repo} #{before_id} #{after_id} #{ref}")
+  end
+end
+```
+
+change-notify.sh might look like:
+
+```sh
+#!/bin/sh
+
+set -e
+
+EXPECTED_ARGS=4
+E_BADARGS=65
+
+if [ $# -ne $EXPECTED_ARGS ]
+then
+    echo "Usage: `basename $0` {repo} {before commit ID} {after commit ID} {ref}"
+    exit $E_BADARGS
+fi
+
+REPO=$1
+BEFORE=$2
+AFTER=$3
+REF=$4
+CONFIG=myconfig.yml
+
+# Assume repository exists in directory and user has pull access
+cd /repository/$REPO
+git pull
+echo $BEFORE $AFTER $REF | /usr/local/bin/git-commit-notifier $CONFIG
+```
 
 ## Integration of links to other websites
 
@@ -99,7 +153,7 @@ old commits in processes of forking, branching etc.
 
 ## Note on Patches/Pull Requests
 
-* Fork [the project](https://github.com/bitboxer/git-commit-notifier).
+* Fork [the project](https://github.com/git-commit-notifier/git-commit-notifier).
 * Make your feature addition or bug fix.
 * Add tests for it. This is important so I don't break it in a
   future version unintentionally.

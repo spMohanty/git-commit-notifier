@@ -6,28 +6,43 @@ require 'net/smtp'
 require 'digest/sha1'
 
 module GitCommitNotifier
+  # Represents Git commit hook handler.
   class CommitHook
 
     class << self
-      attr_reader :config    
+      # Configuration that read from YAML file.
+      # @return [Hash] Configuration.
+      attr_reader :config
 
+      # Prints error message to $stderr.
+      # @param [String] message Message to be printed to $stderr.
+      # @return [NilClass] nil
       def show_error(message)
         $stderr.puts "************** GIT NOTIFIER PROBLEM *******************"
         $stderr.puts "\n"
         $stderr.puts message
         $stderr.puts "\n"
         $stderr.puts "************** GIT NOTIFIER PROBLEM *******************"
+        nil
       end
 
+      # Prints informational message to $stdout.
+      # @param [String] message Message to be printed to $stdout.
+      # @return [NilClass] nil
       def info(message)
         $stdout.puts message
         $stdout.flush
+        nil
       end
 
+      # Gets logger.
       def logger
         @logger ||= Logger.new(config)
       end
 
+      # Gets list of branches from {config} to include into notifications.
+      # @note All branches will be notified about if returned list is nil; otherwise only specified branches will be notifified about.
+      # @return [Array(String), NilClass] Array of branches to include into notifications or nil.
       def include_branches
         include_branches = config["include_branches"]
         unless include_branches.nil?
@@ -39,19 +54,43 @@ module GitCommitNotifier
         include_branches
       end
 
-      def merge_commit?(result)
-        ! result[:commit_info][:merge].nil?
+      # Is merge commit?
+      # @param [Hash] commit_info Information about commit.
+      def merge_commit?(commit_info)
+        ! commit_info[:commit_info][:merge].nil?
       end
 
+      # Gets message subject.
+      # @param [Hash] commit_info Commit info.
+      # @param [String] template Subject template.
+      # @param [Hash] subject_map Map of subject substitutions.
+      # @return [String] Message subject.
+      def get_subject(commit_info, template, subject_map)
+        template.gsub(/\$\{(\w+)\}/) do |m|
+          res = subject_map[$1.intern]
+          if res.kind_of?(Proc)
+            res = res.call(commit_info)
+          end
+          res
+        end
+      end
+
+      # Runs comit hook handler using specified arguments.
+      # @param [String] config_name Path to the application configuration file in YAML format.
+      # @param [String] rev1 First specified revision.
+      # @param [String] rev2 Second specified revision.
+      # @param [String] ref_name Git reference (usually in "refs/heads/branch" format).
+      # @return [NilClass] nil
+      # @see config
       def run(config_name, rev1, rev2, ref_name)
-      
-      	# Load the configuration
+
+        # Load the configuration
         @config = File.exists?(config_name) ? YAML::load_file(config_name) : {}
 
         project_path = Git.git_dir
         repo_name = Git.repo_name
         prefix = config["emailprefix"] || repo_name
-        
+
         branch_name = if ref_name =~ /^refs\/heads\/(.+)$/
           $1
         else
@@ -60,7 +99,7 @@ module GitCommitNotifier
         slash_branch_name = "/#{branch_name}"
         slash_branch_name = "" if !config["show_master_branch_name"] && slash_branch_name == '/master'
 
-		# Identify email recipients
+        # Identify email recipients
         recipient = config["mailinglist"] || Git.mailing_list_address
 
         # If no recipients specified, bail out gracefully. This is not an error, and might be intentional
@@ -69,7 +108,7 @@ module GitCommitNotifier
           return
         end
 
-		# Debug information
+        # Debug information
         logger.debug('----')
         logger.debug("cwd: #{Dir.pwd}")
         logger.debug("Git Directory: #{project_path}")
@@ -84,15 +123,16 @@ module GitCommitNotifier
 
         unless include_branches.nil? || include_branches.include?(branch_name)
           info("Supressing mail for branch #{branch_name}...")
-          return
+          return nil
         end
-        
+
         # Replacements for subject template
         #     prefix
         #     repo_name
         #     branch_name
         #     slash_branch_name
         #     commit_id (hash)
+        #     description ('git describe' tag)
         #     short_message
         #     commit_number
         #     commit_count
@@ -104,13 +144,14 @@ module GitCommitNotifier
           :branch_name => branch_name,
           :slash_branch_name => slash_branch_name,
           :commit_id => nil,
+          :description => lambda { |commit_info| Git.describe(commit_info[:commit]) },
           :message => nil,
           :commit_number => nil,
           :commit_count => nil,
           :commit_count_phrase => nil,
           :commit_count_phrase2 => nil
         }
-        
+
         info("Sending mail...")
 
         diff2html = DiffToHtml.new(config)
@@ -118,12 +159,6 @@ module GitCommitNotifier
           diff2html.diff_between_revisions(rev1, rev2, prefix, ref_name)
           diffresult = diff2html.result
           diff2html.clear_result
-
-          if config["ignore_merge"]
-            diffresult.reject! do |result|
-              merge_commit?(result)
-            end
-          end
 
           text, html = [], []
           result = diffresult.first
@@ -133,7 +168,7 @@ module GitCommitNotifier
             text << result[:text_content]
             html << result[:html_content]
           end
-          
+
           # Form the subject from template
           revised_subject_words = subject_words.merge({
             :commit_id => result[:commit_info][:commit],
@@ -144,13 +179,14 @@ module GitCommitNotifier
             :commit_count_phrase2 => diffresult.size == 1 ? "" : "#{diffresult.size} commits: "
           })
           subject_template = config['subject'] || "[${prefix}${slash_branch_name}] ${commit_count_phrase2}${message}"
-          subject = subject_template.gsub(/\$\{(\w+)\}/) { |m| revised_subject_words[$1.intern] }
+          subject = get_subject(result[:commit_info], subject_template, revised_subject_words)
 
           emailer = Emailer.new(config,
             :project_path => project_path,
             :recipient => recipient,
             :from_address => config["from"] || result[:commit_info][:email],
             :from_alias => result[:commit_info][:author],
+            :reply_to_address => config["reply_to_author"] ? result[:commit_info][:email] : config["from"] || result[:commit_info][:email],
             :subject => subject,
             :date => result[:commit_info][:date],
             :text_message => text.join("------------------------------------------\n\n"),
@@ -161,28 +197,43 @@ module GitCommitNotifier
             :repo_name => repo_name
           )
           emailer.send
+
+          # WEBHOOK patch
+          unless config['webhook'].nil?
+            webhook = Webhook.new(config,
+              :committer => result[:commit_info][:author],
+              :email => result[:commit_info][:email],
+              :message => result[:commit_info][:message],
+              :subject => subject,
+              :changed => Git.split_status(rev1,rev2),
+              :old_rev => rev1,
+              :new_rev => rev2,
+              :ref_name => ref_name,
+              :repo_name => repo_name
+            )
+            webhook.send
+          end
         else
           commit_number = 1
-          diff2html.diff_between_revisions(rev1, rev2, prefix, ref_name) do |result|
-            next if config["ignore_merge"] && merge_commit?(result)
-            
+          diff2html.diff_between_revisions(rev1, rev2, prefix, ref_name) do |count, result|
             # Form the subject from template
             revised_subject_words = subject_words.merge({
               :commit_id => result[:commit_info][:commit],
               :message => result[:commit_info][:message],
               :commit_number => commit_number,
-              :commit_count => 1,
-              :commit_count_phrase => "1 commit",
-              :commit_count_phrase2 => ""
+              :commit_count => count,
+              :commit_count_phrase => count == 1 ? "1 commit" : "#{count} commits",
+              :commit_count_phrase2 => count == 1 ? "" : "#{count} commits: "
             })
-            subject_template = config['subject'] || "[${prefix}${slash_branch_name}][${commit_number}] ${message}"
-            subject = subject_template.gsub(/\$\{(\w+)\}/) { |m| revised_subject_words[$1.intern] }
-            
+            subject_template = config['subject'] || "[${prefix}${slash_branch_name}][${commit_number}/${commit_count}] ${message}"
+            subject = get_subject(result[:commit_info], subject_template, revised_subject_words)
+
             emailer = Emailer.new(config,
               :project_path => project_path,
               :recipient => recipient,
               :from_address => config["from"] || result[:commit_info][:email],
               :from_alias => result[:commit_info][:author],
+              :reply_to_address => config["reply_to_author"] ? result[:commit_info][:email] : config["from"] || result[:commit_info][:email],
               :subject => subject,
               :date => result[:commit_info][:date],
               :text_message => result[:text_content],
@@ -193,13 +244,27 @@ module GitCommitNotifier
               :repo_name => repo_name
             )
             emailer.send
+
+            # WEBHOOK patch
+            unless config['webhook'].nil?
+              webhook = Webhook.new(config,
+                :committer => result[:commit_info][:author],
+                :email => result[:commit_info][:email],
+                :message => result[:commit_info][:message],
+                :subject => subject,
+                :changed => Git.split_status(rev1,rev2),
+                :old_rev => rev1,
+                :new_rev => rev2,
+                :ref_name => ref_name,
+                :repo_name => repo_name
+              )
+              webhook.send
+            end
+
             commit_number += 1
           end
         end
-      end
-
-      def number(i)
-        "[#{i + 1}]"
+        nil
       end
     end
   end
