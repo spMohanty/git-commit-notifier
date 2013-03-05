@@ -30,11 +30,12 @@ class GitCommitNotifier::Git
     # @see from_shell
     # @param [String] rev Revision
     # @param [Hash] opts Options
-    # @option opts [Boolean] :ignore_whitespaces Ignore whitespaces or not
+    # @option opts [String] :ignore_whitespace How whitespaces should be treated
     def show(rev, opts = {})
       gitopt = " --date=rfc2822"
       gitopt += " --pretty=fuller"
-      gitopt += " -w" if opts[:ignore_whitespaces]
+      gitopt += " -w" if opts[:ignore_whitespace] == 'all'
+      gitopt += " -b" if opts[:ignore_whitespace] == 'change'
       from_shell("git show #{rev.strip}#{gitopt}")
     end
 
@@ -71,13 +72,14 @@ class GitCommitNotifier::Git
     # splits the output of changed_files
     # @return [Hash(Array)] file names sorted by status
     # @see changed_files
-    # @param [Array(String)] lines
+    # @param [String] rev1 First revision
+    # @param [String] rev2 Second revision
     def split_status(rev1, rev2)
       lines = changed_files(rev1, rev2)
       modified = lines.map { |l| l.gsub(/M\s/,'').strip if l[0,1] == 'M' }.select { |l| !l.nil? }
       added = lines.map { |l| l.gsub(/A\s/,'').strip if l[0,1] == 'A' }.select { |l| !l.nil? }
       deleted = lines.map { |l| l.gsub(/D\s/,'').strip if l[0,1] == 'D' }.select { |l| !l.nil? }
-      return { :m => modified, :a => added, :d => deleted }
+      { :m => modified, :a => added, :d => deleted }
     end
 
     def branch_commits(treeish)
@@ -137,7 +139,7 @@ class GitCommitNotifier::Git
 
       # Get all the commits that match that specification
       lines = lines_from_shell("git rev-list --reverse #{a.join(' ')}")
-      commits = lines.to_a.map { |l| l.chomp }
+      lines.to_a.map { |l| l.chomp }
     end
 
     def rev_type(rev)
@@ -176,6 +178,28 @@ class GitCommitNotifier::Git
       if git_path.empty?
         git_path = git_dir
       end
+      File.expand_path(git_path).split("/").last.sub(/\.git$/, '')
+    end
+
+	# Gets repository name.
+    # @note Tries to gets human readable repository name through `git config hooks.emailprefix` call.
+    #       If it's not specified then returns directory name with parent directory name (except '.git'
+	#       suffix if exists).
+    # @return [String] Human readable repository name.
+    def repo_name_with_parent
+      git_prefix = begin
+        from_shell("git config hooks.emailprefix").strip
+      rescue ArgumentError
+        ''
+      end
+      return git_prefix  unless git_prefix.empty?
+      git_path = toplevel_dir
+      # In a bare repository, toplevel directory is empty.  Revert to git_dir instead.
+      if git_path.empty?
+        git_path = git_dir
+      end
+      name_with_parent = File.expand_path(git_path).scan(/[a-zA-z0-9]+\/[a-zA-Z0-9]+.git$/).first;
+      return name_with_parent.sub(/\.git$/, '') unless name_with_parent.empty?
       File.expand_path(git_path).split("/").last.sub(/\.git$/, '')
     end
 

@@ -11,6 +11,8 @@ module GitCommitNotifier
   class DiffToHtml
     include EscapeHelper
 
+
+
     # Integration map for commit message keywords to third-party links.
     INTEGRATION_MAP = {
       :mediawiki => { :search_for => /\[\[([^\[\]]+)\]\]/, :replace_with => '#{url}/\1' },
@@ -49,6 +51,10 @@ module GitCommitNotifier
       @file_removed = false
       @file_changes = []
       @binary = false
+      unless String.method_defined?(:encode!)
+        require 'iconv'
+        @ic = Iconv.new('UTF-8', 'UTF-8//IGNORE')
+      end
     end
 
     def range_info(range)
@@ -90,9 +96,11 @@ module GitCommitNotifier
     end
 
     # Gets ignore_whitespace setting from {#config}.
-    # @return [Boolean] true if whitespaces should be ignored in diff; otherwise false.
-    def ignore_whitespaces?
-      config['ignore_whitespace'].nil? || config['ignore_whitespace']
+    # @return [String] How whitespaces should be treated in diffs (none, all, change)
+    def ignore_whitespace
+      return 'all' if config['ignore_whitespace'].nil?
+      return 'none' if !config['ignore_whitespace']
+      (['all', 'change', 'none'].include?(config['ignore_whitespace']) ? config['ignore_whitespace'] : 'all')
     end
 
     # Adds separator between diff blocks to @diff_result.
@@ -185,18 +193,21 @@ module GitCommitNotifier
       file_name = @current_file_name
 
       # TODO: these filenames, etc, should likely be properly html escaped
-      if config['link_files']
-        file_name = if config["link_files"] == "gitweb" && config["gitweb"]
+      file_link = file_name
+      if config['link_files'] && !@file_removed
+        file_link = if config["link_files"] == "gitweb" && config["gitweb"]
           "<a href='#{config['gitweb']['path']}?p=#{config['gitweb']['project'] || "#{Git.repo_name}.git"};f=#{file_name};h=#{@current_sha};hb=#{@current_commit}'>#{file_name}</a>"
         elsif config["link_files"] == "gitorious" && config["gitorious"]
           "<a href='#{config['gitorious']['path']}/#{config['gitorious']['project']}/#{config['gitorious']['repository']}/blobs/#{branch_name}/#{file_name}'>#{file_name}</a>"
         elsif config["link_files"] == "trac" && config["trac"]
           "<a href='#{config['trac']['path']}/#{@current_commit}/#{file_name}'>#{file_name}</a>"
         elsif config["link_files"] == "cgit" && config["cgit"]
-          "<a href='#{config['cgit']['path']}/#{config['cgit']['project']}/tree/#{file_name}'>#{file_name}</a>"
+          "<a href='#{config['cgit']['path']}/#{config['cgit']['project']}/tree/#{file_name}?h=#{branch_name}'>#{file_name}</a>"
         elsif config["link_files"] == "gitlabhq" && config["gitlabhq"]
           if config["gitlabhq"]["version"] && config["gitlabhq"]["version"] < 1.2
             "<a href='#{config['gitlabhq']['path']}/#{Git.repo_name.gsub(".", "_")}/tree/#{@current_commit}/#{file_name}'>#{file_name}</a>"
+          elsif config["gitlabhq"]["version"] && config["gitlabhq"]["version"] >= 4.0
+            "<a href='#{config['gitlabhq']['path']}/#{Git.repo_name_with_parent.gsub(".", "_")}/commit/#{@current_commit}'>#{file_name}</a>"
           else
             "<a href='#{config['gitlabhq']['path']}/#{Git.repo_name.gsub(".", "_")}/#{@current_commit}/tree/#{file_name}'>#{file_name}</a>"
           end
@@ -207,13 +218,14 @@ module GitCommitNotifier
         end
       end
 
-      header = "#{op} #{binary}file #{file_name}"
-
       if show_summary?
-        @file_changes << [ file_name, header ]
+        @file_changes << {
+          :file_name => file_name, 
+          :text => "#{op} #{binary}file #{file_name}",
+        }
       end
 
-      "<h2 id=\"#{file_name}\">#{header}</h2>\n"
+      "<a name=\"#{file_name}\"></a><h2>#{op} #{binary}file #{file_link}</h2>\n"
     end
 
     # Determines are two lines are sequentially placed in diff (no skipped lines between).
@@ -513,8 +525,17 @@ module GitCommitNotifier
 
     def diff_for_commit(commit)
       @current_commit = commit
-      raw_diff = truncate_long_lines(Git.show(commit, :ignore_whitespaces => ignore_whitespaces?))
+      raw_diff = truncate_long_lines(Git.show(commit, :ignore_whitespace => ignore_whitespace))
       raise "git show output is empty" if raw_diff.empty?
+
+      if raw_diff.respond_to?(:encode!)
+        unless raw_diff.valid_encoding?
+          raw_diff.encode!("UTF-16", "UTF-8", :invalid => :replace, :undef => :replace)
+          raw_diff.encode!("UTF-8", "UTF-16")
+        end
+      else
+        raw_diff = @ic.iconv(raw_diff)
+      end
 
       commit_info = extract_commit_info_from_git_show_output(raw_diff)
       return nil  if old_commit?(commit_info)
@@ -553,12 +574,12 @@ module GitCommitNotifier
       html_diff = diff_for_revision(extract_diff_from_git_show_output(raw_diff))
       message_array = message_array_as_html(changed_files.split("\n"))
 
-      if show_summary? and @file_changes.respond_to?("each")
+      if show_summary?
         title += "<ul>"
 
-        @file_changes.each do |file_name, header|
-          title += "<li><a href=\"\##{file_name}\">#{header}</a></li>"
-          text += "#{header}\n"
+        @file_changes.each do |change|
+          title += "<li><a href=\"\##{change[:file_name]}\">#{change[:text]}</a></li>"
+          text += "#{change[:text]}\n"
         end
 
         title += "</ul>"
