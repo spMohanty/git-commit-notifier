@@ -40,18 +40,16 @@ module GitCommitNotifier
         @logger ||= Logger.new(config)
       end
 
-      def is_email_address(email)
-        email_regex = /\b[A-Z0-9._%a-z\-]+@(?:[A-Z0-9a-z\-]+\.)+[A-Za-z]{2,4}\z/
-
-        (email =~ email_regex)
+      def email?(email)
+        !!(email =~ /@/)
       end
 
       def add_committer_to_recipient(recipient, committer_email)
-        if is_email_address(committer_email) 
-          recipient = "#{recipient},#{committer_email}"
+        if email?(committer_email) 
+          "#{recipient},#{committer_email}"
+        else
+          recipient
         end
-
-        recipient
       end
 
       # Gets list of branches from {config} to include into notifications.
