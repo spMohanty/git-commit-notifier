@@ -153,6 +153,7 @@ module GitCommitNotifier
         #     branch_name
         #     slash_branch_name
         #     commit_id (hash)
+        #     short_commit_id (first 7 digits of the hash)
         #     description ('git describe' tag)
         #     short_message
         #     commit_number
@@ -165,6 +166,7 @@ module GitCommitNotifier
           :branch_name => branch_name,
           :slash_branch_name => slash_branch_name,
           :commit_id => nil,
+          :short_commit_id => nil,
           :description => lambda { |commit_info| Git.describe(commit_info[:commit]) },
           :message => nil,
           :commit_number => nil,
@@ -193,6 +195,7 @@ module GitCommitNotifier
           # Form the subject from template
           revised_subject_words = subject_words.merge({
             :commit_id => result[:commit_info][:commit],
+            :short_commit_id => result[:commit_info][:commit].slice(0, 7),
             :message => result[:commit_info][:message],
             :commit_number => 1,
             :commit_count => diffresult.size,
@@ -240,6 +243,7 @@ module GitCommitNotifier
             # Form the subject from template
             revised_subject_words = subject_words.merge({
               :commit_id => result[:commit_info][:commit],
+              :short_commit_id => result[:commit_info][:commit].slice(0, 7),
               :message => result[:commit_info][:message],
               :commit_number => commit_number,
               :commit_count => count,
