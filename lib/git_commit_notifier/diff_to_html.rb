@@ -11,8 +11,6 @@ module GitCommitNotifier
   class DiffToHtml
     include EscapeHelper
 
-
-
     # Integration map for commit message keywords to third-party links.
     INTEGRATION_MAP = {
       :mediawiki => { :search_for => /\[\[([^\[\]]+)\]\]/, :replace_with => '#{url}/\1' },
@@ -202,7 +200,7 @@ module GitCommitNotifier
         elsif config["link_files"] == "trac" && config["trac"]
           "<a href='#{config['trac']['path']}/#{@current_commit}/#{file_name}'>#{file_name}</a>"
         elsif config["link_files"] == "cgit" && config["cgit"]
-          "<a href='#{config['cgit']['path']}/#{config['cgit']['project']}/tree/#{file_name}?h=#{branch_name}'>#{file_name}</a>"
+          "<a href='#{config['cgit']['path']}/#{config['cgit']['project'] || "#{Git.repo_name_real}"}/tree/#{file_name}?h=#{branch_name}'>#{file_name}</a>"
         elsif config["link_files"] == "gitlabhq" && config["gitlabhq"]
           if config["gitlabhq"]["version"] && config["gitlabhq"]["version"] < 1.2
             "<a href='#{config['gitlabhq']['path']}/#{Git.repo_name.gsub(".", "_")}/tree/#{@current_commit}/#{file_name}'>#{file_name}</a>"
@@ -211,6 +209,10 @@ module GitCommitNotifier
           else
             "<a href='#{config['gitlabhq']['path']}/#{Git.repo_name.gsub(".", "_")}/#{@current_commit}/tree/#{file_name}'>#{file_name}</a>"
           end
+        elsif config["link_files"] == "gitalist" && config["gitalist"]
+          "<a href='#{config['gitalist']['path']}/#{config['gitalist']['project'] || Git.repo_name}/#{@current_commit}/blob/#{file_name}'>#{file_name}</a>"
+        elsif config["link_files"] == "github" && config["github"]
+          "<a href='#{config['github']['path']}/#{config['github']['project']}/#{Git.repo_name}/blob/#{@current_commit}/#{file_name}'>#{file_name}</a>"
         elsif config["link_files"] == "redmine" && config["redmine"]
           "<a href='#{config['redmine']['path']}/projects/#{config['redmine']['project'] || Git.repo_name}/repository/revisions/#{@current_commit}/entry/#{file_name}'>#{file_name}</a>"
         else
@@ -506,9 +508,11 @@ module GitCommitNotifier
       :gitweb    => lambda { |config, commit| "<a href='#{config['gitweb']['path']}?p=#{config['gitweb']['project'] || "#{Git.repo_name}.git"};a=commitdiff;h=#{commit}'>#{commit}</a>" },
       :gitorious => lambda { |config, commit| "<a href='#{config['gitorious']['path']}/#{config['gitorious']['project']}/#{config['gitorious']['repository']}/commit/#{commit}'>#{commit}</a>" },
       :trac      => lambda { |config, commit| "<a href='#{config['trac']['path']}/#{commit}'>#{commit}</a>" },
-      :cgit      => lambda { |config, commit| "<a href='#{config['cgit']['path']}/#{config['cgit']['project']}/commit/?id=#{commit}'>#{commit}</a>" },
+      :cgit      => lambda { |config, commit| "<a href='#{config['cgit']['path']}/#{config['cgit']['project'] || "#{Git.repo_name_real}"}/commit/?id=#{commit}'>#{commit}</a>" },
       :gitlabhq  => lambda { |config, commit| "<a href='#{config['gitlabhq']['path']}/#{Git.repo_name.gsub(".", "_")}/commits/#{commit}'>#{commit}</a>" },
+      :gitalist  => lambda { |config, commit| "<a href='#{config['gitalist']['path']}/projects/#{config['gitalist']['project'] || Git.repo_name}/#{commit}/log'>#{commit}</a>" },
       :redmine   => lambda { |config, commit| "<a href='#{config['redmine']['path']}/projects/#{config['redmine']['project'] || Git.repo_name}/repository/revisions/#{commit}'>#{commit}</a>" },
+      :github    => lambda { |config, commit| "<a href='#{config['github']['path']}/#{config['github']['project']}/#{Git.repo_name}/commit/#{commit}'>#{commit}</a>" },
       :default   => lambda { |config, commit| commit.to_s }
     }.freeze
 

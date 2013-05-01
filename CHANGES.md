@@ -1,5 +1,15 @@
 # Changes
 
+## Not yet released
+
+## Version 0.11.10
+
+* Display info message if the config.yml specified is not found.
+* Strip whitespace after splitting emails for SMTP.
+* Added prefer_git_config_mailinglist config variable.
+* Allow to use one configuration file per all cgit projects.
+* Support for Gitalist.
+
 ## Version 0.11.9
 
 * Notifier now do not falls on invalid utf-8 text in diffs.

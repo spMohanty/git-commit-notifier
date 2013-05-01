@@ -40,6 +40,18 @@ module GitCommitNotifier
         @logger ||= Logger.new(config)
       end
 
+      def email?(email)
+        !!(email =~ /@/)
+      end
+
+      def add_committer_to_recipient(recipient, committer_email)
+        if email?(committer_email) 
+          "#{recipient},#{committer_email}"
+        else
+          recipient
+        end
+      end
+
       # Gets list of branches from {config} to include into notifications.
       # @note All branches will be notified about if returned list is nil; otherwise only specified branches will be notifified about.
       # @return [Array(String), NilClass] Array of branches to include into notifications or nil.
@@ -85,7 +97,12 @@ module GitCommitNotifier
       def run(config_name, rev1, rev2, ref_name)
 
         # Load the configuration
-        @config = File.exists?(config_name) ? YAML::load_file(config_name) : {}
+        if File.exists?(config_name) 
+          @config = YAML::load_file(config_name) 
+        else
+          GitCommitNotifier::CommitHook.info("Unable to find configuration file: #{config_name}")
+          @config = {}
+        end
 
         project_path = Git.git_dir
         repo_name = Git.repo_name
@@ -100,7 +117,11 @@ module GitCommitNotifier
         slash_branch_name = "" if !config["show_master_branch_name"] && slash_branch_name == '/master'
 
         # Identify email recipients
-        recipient = config["mailinglist"] || Git.mailing_list_address
+        if config["prefer_git_config_mailinglist"]
+          recipient = Git.mailing_list_address || config["mailinglist"] 
+        else
+          recipient = config["mailinglist"] || Git.mailing_list_address
+        end
 
         # If no recipients specified, bail out gracefully. This is not an error, and might be intentional
         if recipient.nil? || recipient.length == 0
@@ -132,6 +153,7 @@ module GitCommitNotifier
         #     branch_name
         #     slash_branch_name
         #     commit_id (hash)
+        #     short_commit_id (first few unique digits of the hash)
         #     description ('git describe' tag)
         #     short_message
         #     commit_number
@@ -144,6 +166,7 @@ module GitCommitNotifier
           :branch_name => branch_name,
           :slash_branch_name => slash_branch_name,
           :commit_id => nil,
+          :short_commit_id => lambda { |commit_info| Git.short_commit_id(commit_info[:commit]) },
           :description => lambda { |commit_info| Git.describe(commit_info[:commit]) },
           :message => nil,
           :commit_number => nil,
@@ -183,7 +206,7 @@ module GitCommitNotifier
 
           emailer = Emailer.new(config,
             :project_path => project_path,
-            :recipient => recipient,
+            :recipient => config["send_mail_to_committer"] ? add_committer_to_recipient(recipient, result[:commit_info][:email]) : recipient,
             :from_address => config["from"] || result[:commit_info][:email],
             :from_alias => result[:commit_info][:author],
             :reply_to_address => config["reply_to_author"] ? result[:commit_info][:email] : config["from"] || result[:commit_info][:email],
@@ -230,7 +253,7 @@ module GitCommitNotifier
 
             emailer = Emailer.new(config,
               :project_path => project_path,
-              :recipient => recipient,
+              :recipient => config["send_mail_to_committer"] ? add_committer_to_recipient(recipient, result[:commit_info][:email]) : recipient,
               :from_address => config["from"] || result[:commit_info][:email],
               :from_alias => result[:commit_info][:author],
               :reply_to_address => config["reply_to_author"] ? result[:commit_info][:email] : config["from"] || result[:commit_info][:email],

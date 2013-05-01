@@ -1,8 +1,10 @@
 # Git Commit Notifier
 
-[![Build Status](https://travis-ci.org/git-commit-notifier/git-commit-notifier.png)](https://travis-ci.org/git-commit-notifier/git-commit-notifier)
+[![build status](https://secure.travis-ci.org/git-commit-notifier/git-commit-notifier.png)](https://travis-ci.org/git-commit-notifier/git-commit-notifier)
+[![Code Climate](https://codeclimate.com/github/git-commit-notifier/git-commit-notifier.png)](https://codeclimate.com/github/git-commit-notifier/git-commit-notifier)
+[![Coverage Status](https://coveralls.io/repos/git-commit-notifier/git-commit-notifier/badge.png?branch=master)](https://coveralls.io/r/git-commit-notifier/git-commit-notifier)
 
-__by Bodo Tasche (bodo 'at' wannawork 'dot' de), Akzhan Abdulin (akzhan 'dot' abdulin 'at' gmail 'dot' com), Csoma Zoltan  (info 'at' railsprogrammer 'dot' net)__
+## Description
 
 This gem sends email commit messages splitting commits that were pushed in one step.
 The Email is delivered as text or HTML with changes refined per word. Emails
@@ -25,6 +27,8 @@ numbered in chronological order:
 Example email:
 
 ![Example](http://img171.imageshack.us/img171/954/gitcommitnotifieremailpq3.png "Example")
+
+__by Bodo Tasche (bodo 'at' wannawork 'dot' de), Akzhan Abdulin (akzhan 'dot' abdulin 'at' gmail 'dot' com), Csoma Zoltan  (info 'at' railsprogrammer 'dot' net)__
 
 ## Requirements
 
@@ -60,6 +64,13 @@ If you want to send mails on each commit instead on each push, you should add a 
 #!/bin/sh
 echo "HEAD^1 HEAD refs/heads/master" | git-commit-notifier path_to_config.yml
 ```
+
+## Decorate files and commit ids with link to a webview
+You need change next line in config file ```link_files: none```
+
+Possible values: none, gitweb, gitorious, cgit, trac, gitlabhq, or redmine
+
+* "cgit" you can omit "project". In this case repository name will be used by default
 
 ## Integration with Redmine, Bugzilla, MediaWiki
 
