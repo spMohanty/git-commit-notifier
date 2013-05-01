@@ -269,7 +269,7 @@ module GitCommitNotifier
               :subject => subject,
               :commit_date => result[:commit_info][:date],
               :current_date => Time.new.rfc2822,
-              :offset_date => @start_time + @start_time_offset.rfc2822,
+              :offset_date => (@start_time + @start_time_offset).rfc2822,
               :text_message => result[:text_content],
               :html_message => result[:html_content],
               :old_rev => rev1,
