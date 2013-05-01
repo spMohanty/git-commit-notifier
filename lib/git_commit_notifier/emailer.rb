@@ -206,7 +206,7 @@ class GitCommitNotifier::Emailer
 
     content.concat [
         "#{to_tag}: #{quote_if_necessary(@recipient, 'utf-8')}",
-        "Date: #{@date}",
+        "Date: #{date}",
         "Subject: #{quote_if_necessary(@subject, 'utf-8')}",
         "X-Mailer: git-commit-notifier",
         "X-Git-Repository: #{@repo_name}",
