@@ -56,6 +56,10 @@ show_summary: true
 # The recipient (or newsgroup for nntp) for the commit
 # It can send to multiple destinations, just separate email addresses by ",".
 mailinglist: developers@example.com,dev2@example.com,dev3@example.com,cto@example.com
+# or setup mailing list per branch
+# mailinglist:
+#   master: developers@example.com,dev2@example.com,dev3@example.com,cto@example.com
+#   default: otherbranches@example.com
 
 # If set to true, the committer (author) will receive the commit mail as well.
 send_mail_to_committer: false
