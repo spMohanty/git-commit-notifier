@@ -2,6 +2,13 @@
 
 ## Not yet released
 
+## Version 0.11.11
+
+* Allow per branch mailing lists.
+* Support for github option for link_files setting.
+* Added possibility to automatically send a mail to the committer.
+* Allow short_commit_id in subject template
+
 ## Version 0.11.10
 
 * Display info message if the config.yml specified is not found.
