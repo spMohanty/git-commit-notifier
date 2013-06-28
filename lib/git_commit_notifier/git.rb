@@ -34,7 +34,7 @@ class GitCommitNotifier::Git
     def show(rev, opts = {})
       gitopt = " --date=rfc2822"
       gitopt += " --pretty=fuller"
-      gitopt += " -M" +GitCommitNotifier::CommitHook.config['similarity_detection_threshold']
+      gitopt += " -M#{GitCommitNotifier::CommitHook.config['similarity_detection_threshold'] || "0.5"}"
       gitopt += " -w" if opts[:ignore_whitespace] == 'all'
       gitopt += " -b" if opts[:ignore_whitespace] == 'change'
       from_shell("git show #{rev.strip}#{gitopt}")
@@ -65,7 +65,7 @@ class GitCommitNotifier::Git
     # @param [String] rev1 First revision
     # @param [String] rev2 Second revision
     def changed_files(rev1, rev2)
-      lines = lines_from_shell("git log #{rev1}..#{rev2} --name-status --pretty=oneline -M")+GitCommitNotifier::CommitHook.config['similarity_detection_threshold']
+      lines = lines_from_shell("git log #{rev1}..#{rev2} --name-status --pretty=oneline -M#{GitCommitNotifier::CommitHook.config['similarity_detection_threshold'] || "0.5"}")
       lines = lines.select {|line| line =~ /^\w{1}\s+\w+/} # grep out only filenames
       lines.uniq
     end
