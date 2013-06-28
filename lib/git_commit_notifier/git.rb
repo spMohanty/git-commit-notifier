@@ -25,7 +25,7 @@ class GitCommitNotifier::Git
     end
 
     # Runs `git show`
-    # @note uses "--pretty=fuller" option.
+    # @note uses "--pretty=fuller" and "-M" option.
     # @return [String] Its output
     # @see from_shell
     # @param [String] rev Revision
@@ -34,6 +34,7 @@ class GitCommitNotifier::Git
     def show(rev, opts = {})
       gitopt = " --date=rfc2822"
       gitopt += " --pretty=fuller"
+      gitopt += " -M"
       gitopt += " -w" if opts[:ignore_whitespace] == 'all'
       gitopt += " -b" if opts[:ignore_whitespace] == 'change'
       from_shell("git show #{rev.strip}#{gitopt}")
@@ -58,13 +59,13 @@ class GitCommitNotifier::Git
     end
 
     # Runs `git log` and extract filenames only
-    # @note uses "--pretty=oneline" and "--name-status" options.
+    # @note uses "--pretty=oneline" and "--name-status" and "-M" options.
     # @return [Array(String)] File names
     # @see lines_from_shell
     # @param [String] rev1 First revision
     # @param [String] rev2 Second revision
     def changed_files(rev1, rev2)
-      lines = lines_from_shell("git log #{rev1}..#{rev2} --name-status --pretty=oneline")
+      lines = lines_from_shell("git log #{rev1}..#{rev2} --name-status --pretty=oneline -M")
       lines = lines.select {|line| line =~ /^\w{1}\s+\w+/} # grep out only filenames
       lines.uniq
     end
@@ -79,7 +80,8 @@ class GitCommitNotifier::Git
       modified = lines.map { |l| l.gsub(/M\s/,'').strip if l[0,1] == 'M' }.select { |l| !l.nil? }
       added = lines.map { |l| l.gsub(/A\s/,'').strip if l[0,1] == 'A' }.select { |l| !l.nil? }
       deleted = lines.map { |l| l.gsub(/D\s/,'').strip if l[0,1] == 'D' }.select { |l| !l.nil? }
-      { :m => modified, :a => added, :d => deleted }
+      renamed = lines.map { |l| l.gsub(/R\d+\s/,'').strip if l[0,1] == 'R' }.select { |l| !l.nil? }
+      { :m => modified, :a => added, :d => deleted , :r => renamed}
     end
 
     def branch_commits(treeish)

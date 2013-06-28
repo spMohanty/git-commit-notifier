@@ -47,6 +47,9 @@ module GitCommitNotifier
       @lines_added = 0
       @file_added = false
       @file_removed = false
+      @file_renamed = false
+      @file_renamed_old_name = false
+      @file_renamed_new_name = false
       @file_changes = []
       @binary = false
       unless String.method_defined?(:encode!)
@@ -184,6 +187,8 @@ module GitCommitNotifier
         "Deleted"
       elsif @file_added
         "Added"
+      elsif @file_renamed
+      	"Renamed"
       else
         "Changed"
       end
@@ -247,7 +252,10 @@ module GitCommitNotifier
 
       @lines_added = 0
       @diff_result << operation_description
-      if !@diff_lines.empty? && !@too_many_files
+
+      if @file_renamed && !@too_many_files
+      	@diff_result << "<table><tr class='renamed'>\n<td class='ln'>&nbsp;</td><td class='ln'></td><td>&nbsp;<u>#{@file_renamed_old_name}</u> was renamed to <u>#{@file_renamed_new_name}</u></td></tr></table>"
+      elsif !@diff_lines.empty? && !@too_many_files
         @diff_result << '<table>'
         removals = []
         additions = []
@@ -290,6 +298,9 @@ module GitCommitNotifier
       @left_ln = nil
       @file_added = false
       @file_removed = false
+      @file_renamed = false
+      @file_renamed_old_name = false
+      @file_renamed_new_name = false
       @binary = false
     end
 
@@ -366,6 +377,11 @@ module GitCommitNotifier
       elsif line =~ /\/dev\/null differ/ # Binary files ... and /dev/null differ (removal)
         @binary = true
         @file_removed = true
+      elsif line =~ /^rename from (.*)/
+	@file_renamed = true
+	@file_renamed_old_name = line.scan(/^rename from (.*)/)[0][0].to_s
+      elsif line =~ /^rename to (.*)/
+	@file_renamed_new_name = line.scan(/^rename to (.*)/)[0][0].to_s
       elsif op == '@'
         @left_ln, @right_ln = range_info(line)
       end
