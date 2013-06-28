@@ -253,10 +253,14 @@ module GitCommitNotifier
       @lines_added = 0
       @diff_result << operation_description
 
-      if @file_renamed && !@too_many_files
-      	@diff_result << "<table><tr class='renamed'>\n<td class='ln'>&nbsp;</td><td class='ln'></td><td>&nbsp;<u>#{@file_renamed_old_name}</u> was renamed to <u>#{@file_renamed_new_name}</u></td></tr></table>"
-      elsif !@diff_lines.empty? && !@too_many_files
+      if (@file_renamed || !@diff_lines.empty?) && (!@too_many_files)
         @diff_result << '<table>'
+
+        ##Adds a ROW in the table for the File Rename Details (if at all present)
+        if @file_renamed
+          @diff_result << "<tr class='renamed'>\n<td class='ln'>&nbsp;</td><td class='ln'></td><td>&nbsp;<u>#{@file_renamed_old_name}</u> was renamed to <u>#{@file_renamed_new_name}</u></td></tr>"
+        end
+       
         removals = []
         additions = []
 

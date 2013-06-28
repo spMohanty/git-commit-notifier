@@ -217,6 +217,14 @@ ignore_whitespace: all
 # webooks:
 #  url: http://example.com:8081/commits
 
+# Adding the similarity detection threshold parameter used by the -M flag when detecting renames
+#
+# The value is a number between 0 and 1
+# with 0 signifying 0% and 1 signifying 100%.
+# The Default value is 0.5, meaning, git will consider a delete/add pair as a rename if 
+# more than 50% of it has not changed
+similarity_detection_threshold: "0.5"
+
 # This is developer debugging options. Do not uncomment it if You aren't Jedi
 # debug:
 #   enabled: true
