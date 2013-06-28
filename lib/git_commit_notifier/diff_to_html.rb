@@ -378,10 +378,10 @@ module GitCommitNotifier
         @binary = true
         @file_removed = true
       elsif line =~ /^rename from (.*)/
-	@file_renamed = true
-	@file_renamed_old_name = line.scan(/^rename from (.*)/)[0][0].to_s
+        @file_renamed = true
+        @file_renamed_old_name = line.scan(/^rename from (.*)/)[0][0].to_s
       elsif line =~ /^rename to (.*)/
-	@file_renamed_new_name = line.scan(/^rename to (.*)/)[0][0].to_s
+        @file_renamed_new_name = line.scan(/^rename to (.*)/)[0][0].to_s
       elsif op == '@'
         @left_ln, @right_ln = range_info(line)
       end
