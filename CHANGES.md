@@ -2,6 +2,11 @@
 
 ## Not yet released
 
+## Version 0.12.0
+
+* Detects renamed files.
+* Fudge email send date to ensure ordering of commit messages.
+
 ## Version 0.11.11
 
 * Allow per branch mailing lists.
