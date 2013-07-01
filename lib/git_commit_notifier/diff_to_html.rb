@@ -198,7 +198,7 @@ module GitCommitNotifier
       ##Adjust filenames and hashes in case of file renames
       if @file_renamed
         file_name = @file_renamed_new_name
-        @current_sha = Git.sha_of_fileName(file_name) 
+        @current_sha = Git.sha_of_fileName(@current_commit,file_name) 
       end
 
       # TODO: these filenames, etc, should likely be properly html escaped

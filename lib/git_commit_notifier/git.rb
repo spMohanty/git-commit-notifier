@@ -70,20 +70,14 @@ class GitCommitNotifier::Git
       lines.uniq
     end
 
-    # Runs `git ls-files -s fileName` to return the sha of the file.(It was required as when there is a file which is renamed, and it has a 100% similarity index, its sha is not included in the git-show output
-    # #note it gives sha1 of the file after the most recent commit
+    # Runs `git show  #{rev}:#{fileName} | git hash-object --stdin` to return the sha of the file.(It was required as when there is a file which is renamed, and it has a 100% similarity index, its sha is not included in the git-show output
     # @return [String] sha1 of the fileName
     # @see from_shell
-    # @param [String] fileName FileName whose sha1 we want
-    def sha_of_fileName(fileName)
-      lines = from_shell("git ls-files -s #{fileName}")
-      sha1 = ""
-      if lines.empty?
-        sha1 = ""
-      else
-        lines = lines.split
-        sha1 = lines[1]
-      end
+    # @param [String] rev :: revision where we want to get the sha of the filename
+    # @param [String] fileName :: FileName whose sha1 we want
+    def sha_of_fileName(rev, fileName)
+      lines = from_shell("git show  #{rev}:#{fileName} | git hash-object --stdin")
+      sha1 = lines.strip
       sha1
     end
 
