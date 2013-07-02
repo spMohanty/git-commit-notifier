@@ -225,6 +225,15 @@ ignore_whitespace: all
 # more than 50% of it has not changed
 similarity_detection_threshold: "0.5"
 
+# Show a shortlog of commits since the last tag, when creating an annotated tag
+#
+# Note :: this feature uses git-describe to obtain the information
+# So, if git-describe is not one of your favourite ways to find the nearest tagged-commit, you will refrain from using this feature
+#
+show_a_shortlog_of_commits_since_the_last_annotated_tag: false
+
+
+
 # This is developer debugging options. Do not uncomment it if You aren't Jedi
 # debug:
 #   enabled: true

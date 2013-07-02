@@ -127,6 +127,38 @@ class GitCommitNotifier::Git
     def branch_head(treeish)
       from_shell("git rev-parse #{treeish}").strip
     end
+    
+
+    # Uses `git describe` to obtain information 
+    #
+    # Note : This only looks for annotated tags.
+    #
+    # Note :: There have been many complaints about using git describe to obtain this information
+    # but, this looked like the best way to obtain the information here.
+    #
+    # Here is a link : http://www.xerxesb.com/2010/git-describe-and-the-tale-of-the-wrong-commits/
+    # discussing, the way git-describe handles the problem of finding the nearest commit with a tag
+    #
+    # Looking forward to someone coming up with a better way.
+    # 
+    # @return Array[ Array of Commit hashes and their messages ]
+    # @param [String] tag_name of the current tag
+    # @param [String] rev :: sha of the commit the tag is associated with
+    def list_of_commits_between_current_commit_and_last_tag(tag_name,rev)
+      result = Array.new
+      print "git describe --abbrev=0 #{rev}^1 2> /dev/null | cat \n"
+      
+      lines = from_shell("git describe --abbrev=0 #{rev}^1 2> /dev/null | cat ") ##the `cat` is used to suppress the error that might arise when handling the case of the first commit
+      if lines.strip.length !=1
+        previous_tag=lines.strip
+        print "git log #{previous_tag}..#{tag_name} --format='%H::::::%s'\n"
+        list_of_commits = lines_from_shell("git log #{previous_tag}..#{tag_name} --format='%H::::::%s'")
+        list_of_commits.each do |row|
+          result << Array.new(row.split("::::::"))
+        end
+      end
+      result
+    end
 
     def new_commits(oldrev, newrev, refname, unique_to_current_branch)
       # We want to get the set of commits (^B1 ^B2 ... ^oldrev newrev)
