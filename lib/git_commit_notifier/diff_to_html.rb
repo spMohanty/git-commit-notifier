@@ -729,6 +729,7 @@ module GitCommitNotifier
 
         commit_info[:message] = message
         commit_info[:author], commit_info[:email] = author_name_and_email("#{tag_info[:taggername]} #{tag_info[:taggeremail]}")
+        
       end
 
       @result << {

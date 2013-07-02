@@ -251,6 +251,7 @@ similarity_detection_threshold: "0.5"
 #
 show_a_shortlog_of_commits_since_the_last_annotated_tag: false
 
+
 # This is developer debugging options. Do not uncomment it if You aren't Jedi
 # debug:
 #   enabled: true
