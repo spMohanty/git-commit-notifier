@@ -119,14 +119,14 @@ class GitCommitNotifier::Git
     
 
     # Lists commits between specified rev and closest annotated tag.
-    # Uses `git describe` to obtain information 
+    # Uses `git describe` to obtain information.
     # @return Array[ Array of Commit hashes and their messages ]
     # @param [String] tag_name of the current tag
     # @param [String] rev :: sha of the commit the tag is associated with
     # @note There have been many complaints about using git describe to obtain this information
     #       but, this looked like the best way to obtain the information here.
     #       Here is a link : http://www.xerxesb.com/2010/git-describe-and-the-tale-of-the-wrong-commits/
-    #       discussing, the way git-describe handles the problem of finding the nearest commit with a tag
+    #       discussing, the way git-describe handles the problem of finding the nearest commit with a tag.
     #       Looking forward to someone coming up with a better way.
     def list_of_commits_between_current_commit_and_last_tag(tag_name, rev)
       result = Array.new
