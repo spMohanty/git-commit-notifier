@@ -204,6 +204,25 @@ class GitCommitNotifier::Emailer
     date = @offset_date     # Date notifier started, plus 1 second per commit processed
     date = Time.new.rfc2822 if date.nil?    # Fallback to current date if date is nil
 
+
+    
+    ###
+    ### Depending upon the configurations,
+    ### This Block tries to trim content from the mail
+    ### if certain blocks are bigger than you would expect them to be
+    ### 
+    ### Read up about the max_mail_block_size parameter in the config file
+    ### 
+    if GitCommitNotifier::CommitHook.config['max_mail_block_size']
+      if plaintext && (plaintext.length > GitCommitNotifier::CommitHook.config['max_mail_block_size'])
+        plaintext = plaintext[0..plaintext.length-1]
+      end
+      print mail_html_message
+      if mail_html_message && (mail_html_message.length > GitCommitNotifier::CommitHook.config['max_mail_block_size'])
+        mail_html_message = mail_html_message[0..mail_html_message.length-1]
+      end
+    end
+
     content.concat [
         "#{to_tag}: #{quote_if_necessary(@recipient, 'utf-8')}",
         "Date: #{date}",
