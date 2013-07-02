@@ -130,7 +130,6 @@ class GitCommitNotifier::Git
     #       Looking forward to someone coming up with a better way.
     def list_of_commits_between_current_commit_and_last_tag(tag_name, rev)
       result = Array.new
-      print "git describe --abbrev=0 #{rev}^1 2> /dev/null | cat \n"
       
       lines = from_shell("git describe --abbrev=0 #{rev}^1 2> /dev/null | cat ") # the `cat` is used to suppress the error that might arise when handling the case of the first commit
       if lines.strip.length !=1
