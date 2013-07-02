@@ -696,6 +696,23 @@ module GitCommitNotifier
         message_array = tag_info[:contents].split("\n")
         multi_line_message = message_array.count > 1
         html += "<dt>Message</dt><dd class='#{multi_line_message ? "multi-line" : ""}'>#{message_array_as_html(message_array)}</dd>\n"
+
+        if config['show_a_shortlog_of_commits_since_the_last_annotated_tag']
+          list_of_commits_in_between = Git.list_of_commits_between_current_commit_and_last_tag(ref_name, tag_info[:tagobject])
+          if list_of_commits_in_between.length > 0
+            html += "<dt><br/>Commits since the last annotated tag</dt><dd><br/><br/><ul>"                    
+            list_of_commits_in_between.each do |commit|
+              if config['link_files'].to_s != "none"
+                l = markup_commit_for_html(commit[0])
+                l = l.gsub(/>.*<\/a>/,">#{commit[1]}</a>") # Replace the link text with the commit message (the original link text is the commit hash)
+                html += "<li>#{l}</li>"
+              else
+                html += "<li>#{commit[1]}</li>"
+              end
+            end
+            html += "</ul></dd>"
+          end
+        end
         html += "</dl>"
 
         text = "Tag: #{tag} (#{change_type == :create ? "added" : "updated"})\n"
