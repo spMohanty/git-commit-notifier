@@ -9,7 +9,7 @@ require 'git_commit_notifier/escape_helper'
 module GitCommitNotifier
   # Translates Git diff to HTML format
   class DiffToHtml
-    include EscapeHelper
+    include EscapeHelper 
 
     # Integration map for commit message keywords to third-party links.
     INTEGRATION_MAP = {
@@ -497,33 +497,10 @@ module GitCommitNotifier
         input = StringIO.new(text, "r")
         input.each_line "\n" do |line|
           if line.length > MAX_LINE_LENGTH && MAX_LINE_LENGTH >= 9
-            # Truncate the line
-            line.slice!(MAX_LINE_LENGTH-3..-1)
-
-            # Ruby < 1.9 doesn't know how to slice between
-            # characters, so deal specially with that case
-            # so that we don't truncate in the middle of a UTF8 sequence,
-            # which would be invalid.
-            unless line.respond_to?(:force_encoding)
-              # If the last remaining character is part of a UTF8 multibyte character,
-              # keep truncating until we go past the start of a UTF8 character.
-              # This assumes that this is a UTF8 string, which may be a false assumption
-              # unless somebody has taken care to check the encoding of the source file.
-              # We truncate at most 6 additional bytes, which is the length of the longest
-              # UTF8 sequence
-              6.times do
-                c = line[-1, 1].to_i
-                break if (c & 0x80) == 0      # Last character is plain ASCII: don't truncate
-                line.slice!(-1, 1)            # Truncate character
-                break if (c & 0xc0) == 0xc0   # Last character was the start of a UTF8 sequence, so we can stop now
-              end
-            end
-
-            # Append three dots to the end of line to indicate it's been truncated
-            # (avoiding ellipsis character so as not to introduce more encoding issues)
-            line << "...\n"
+             trimmed_line = StringTrim::utf_friendly_trim(line,MAX_LINE_LENGTH)
+             line = trimmed_line
           end
-          output << line
+          output << line << "\n"
         end
         output.string
       end

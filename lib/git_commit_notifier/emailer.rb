@@ -205,7 +205,6 @@ class GitCommitNotifier::Emailer
     date = @offset_date     # Date notifier started, plus 1 second per commit processed
     date = Time.new.rfc2822 if date.nil?    # Fallback to current date if date is nil
 
-
     
     ###
     ### Depending upon the configurations,
@@ -215,13 +214,10 @@ class GitCommitNotifier::Emailer
     ### Read up about the max_mail_block_size parameter in the config file
     ### 
     if GitCommitNotifier::CommitHook.config['max_mail_block_size']
-      if plaintext && (plaintext.length > GitCommitNotifier::CommitHook.config['max_mail_block_size'])
-        plaintext = utf_friendly_trim(plaintext, GitCommitNotifier::CommitHook.config['max_mail_block_size'])      
-      end
-      if mail_html_message && (mail_html_message.length > GitCommitNotifier::CommitHook.config['max_mail_block_size'])
-         trimmed_html = utf_friendly_trim(mail_html_message,GitCommitNotifier::CommitHook.config['max_mail_block_size'])
-         mail_html_message = trimmed_html
-      end
+      duplicate_html = mail_html_message.dup
+      duplicate_plaintext = plaintext.dup
+      plaintext = StringTrim::utf_friendly_trim(duplicate_plaintext, GitCommitNotifier::CommitHook.config['max_mail_block_size'])
+      mail_html_message =  StringTrim::utf_friendly_trim(duplicate_html,GitCommitNotifier::CommitHook.config['max_mail_block_size'])
     end
 
     content.concat [
@@ -331,41 +327,7 @@ class GitCommitNotifier::Emailer
     (text =~ CHARS_NEEDING_QUOTING) ?
       quoted_printable(text, charset) :
       text
-  end
-
-
-  def utf_friendly_trim(text, length)
-      str = ""
-      # Match encoding of output string to that of input string
-      str.force_encoding(text.encoding)  if str.respond_to?(:force_encoding)
-
-      text.slice!(length-3..-1)
-
-      # Ruby < 1.9 doesn't know how to slice between
-      # characters, so deal specially with that case
-      # so that we don't truncate in the middle of a UTF8 sequence,
-      # which would be invalid.
-      unless text.respond_to?(:force_encoding)
-        # If the last remaining character is part of a UTF8 multibyte character,
-        # keep truncating until we go past the start of a UTF8 character.
-        # This assumes that this is a UTF8 string, which may be a false assumption
-        # unless somebody has taken care to check the encoding of the source file.
-        # We truncate at most 6 additional bytes, which is the length of the longest
-        # UTF8 sequence
-        6.times do
-          c = text[-1, 1].to_i
-          break if (c & 0x80) == 0      # Last character is plain ASCII: don't truncate
-          text.slice!(-1, 1)            # Truncate character
-          break if (c & 0xc0) == 0xc0   # Last character was the start of a UTF8 sequence, so we can stop now
-        end
- 
-        # Append three dots to the end of line to indicate it's been truncated
-        # (avoiding ellipsis character so as not to introduce more encoding issues)
-        text = "#{text}..."
-      end
-    text
-  end        
-
+  end     
 
 end
 
